@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { hasValidOrchestratorKey } from "@/lib/auth";
 import { STATUS_OPTIONS } from "@/lib/sheets";
 import { updateLeadStatus } from "@/lib/leads";
+import { getClientIp, isRateLimited, rateLimitResponse } from "@/lib/rateLimit";
 
 type StatusPayload = {
   claimToken: string;
@@ -14,6 +15,9 @@ type StatusPayload = {
 export async function POST(request: Request, { params }: { params: Promise<{ leadId: string }> }) {
   if (!hasValidOrchestratorKey(request)) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
+  if (isRateLimited(`status:${getClientIp(request)}`, 60, 60_000)) {
+    return rateLimitResponse();
   }
 
   const { leadId } = await params;

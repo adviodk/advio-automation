@@ -4,6 +4,7 @@ import { appendBookingRow } from "@/lib/sheets";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { SLOT_MINUTES, MIN_LEAD_HOURS, TIMEZONE, formatInZone } from "@/lib/time";
 import { hasValidApiKey } from "@/lib/auth";
+import { getClientIp, isRateLimited, rateLimitResponse } from "@/lib/rateLimit";
 
 type BookPayload = {
   slot: string;
@@ -25,6 +26,9 @@ export async function POST(request: Request) {
   if (!hasValidApiKey(request)) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
+  if (isRateLimited(`book:${getClientIp(request)}`, 30, 10 * 60_000)) {
+    return rateLimitResponse();
+  }
 
   let payload: BookPayload;
   try {
@@ -36,6 +40,11 @@ export async function POST(request: Request) {
   const { slot, navn, email } = payload;
   if (!slot || !navn || !email) {
     return NextResponse.json({ ok: false, error: "Navn, email og tid er påkrævet" }, { status: 400 });
+  }
+  for (const value of Object.values(payload)) {
+    if (typeof value === "string" && value.length > 500) {
+      return NextResponse.json({ ok: false, error: "Field too long" }, { status: 400 });
+    }
   }
 
   const start = new Date(slot);

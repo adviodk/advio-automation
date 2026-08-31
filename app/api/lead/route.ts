@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { hasValidApiKey } from "@/lib/auth";
+import { getClientIp, isRateLimited, rateLimitResponse } from "@/lib/rateLimit";
 
 type LeadPayload = {
   type: "kontaktformular" | "spørgeskema";
@@ -36,6 +37,9 @@ export async function POST(request: Request) {
   if (!hasValidApiKey(request)) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
+  if (isRateLimited(`lead:${getClientIp(request)}`, 60, 5 * 60_000)) {
+    return rateLimitResponse();
+  }
 
   let payload: LeadPayload;
   try {
@@ -46,6 +50,11 @@ export async function POST(request: Request) {
 
   if (!payload.type || !(payload.type in TITLES)) {
     return NextResponse.json({ ok: false, error: "Invalid lead type" }, { status: 400 });
+  }
+  for (const value of Object.values(payload)) {
+    if (typeof value === "string" && value.length > 500) {
+      return NextResponse.json({ ok: false, error: "Field too long" }, { status: 400 });
+    }
   }
 
   try {
