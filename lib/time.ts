@@ -3,7 +3,7 @@ export const SLOT_MINUTES = 45;
 export const BUSINESS_START_HOUR = 8;
 export const BUSINESS_END_HOUR = 21;
 export const MIN_LEAD_HOURS = 48;
-export const WINDOW_DAYS = 21;
+export const WINDOW_DAYS = 90;
 
 /**
  * Converts a wall-clock date/time in `timeZone` to the correct UTC Date,
